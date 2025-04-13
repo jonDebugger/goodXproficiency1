@@ -4,8 +4,6 @@ import { bookingService, bookingStatusService, bookingTypeService } from '../ser
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
-
-
 const Modal = ({ isOpen, onClose, diary, date, booking, onSubmit }) => {
   const [patients, setPatients] = useState([]);
   const [bookingTypes, setBookingTypes] = useState([]);
@@ -23,7 +21,7 @@ const Modal = ({ isOpen, onClose, diary, date, booking, onSubmit }) => {
   const inputClass =
     "bg-[#1e1e2e] text-[#cdd6f4] border border-[#585b70] p-1 rounded focus:outline-none focus:ring-2 focus:ring-[#89b4fa] font-mono text-xs w-72";
 
-  // Set default hours (e.g., 9 AM)
+  // Default Hours
   useEffect(() => {
     if (date) {
       const newDate = new Date(date);
@@ -106,11 +104,38 @@ const Modal = ({ isOpen, onClose, diary, date, booking, onSubmit }) => {
     if (booking) {
       setPatientUid(booking.patient_uid ? booking.patient_uid.toString() : '');
       setBookingTypeUid(booking.booking_type_uid ? booking.booking_type_uid.toString() : '');
-      setStartTime(booking.start_time ? new Date(booking.start_time) : (date ? new Date(date) : new Date()));
+
+      // Handle the booking start time
+      if (booking.start_time) {
+        setStartTime(new Date(booking.start_time));
+      } else if (date) {
+        const newDate = new Date(date);
+        newDate.setHours(9, 0, 0);
+        setStartTime(newDate);
+      }
+
       setDuration(booking.duration || 15);
       setReason(booking.reason || '');
+    } else {
+      // Reset form for new booking
+      if (patients.length > 0) {
+        setPatientUid(patients[0].uid.toString());
+      }
+      if (bookingTypes.length > 0) {
+        setBookingTypeUid(bookingTypes[0].uid.toString());
+      }
+      // Set default time to 9 AM on the selected date
+      if (date) {
+        const newDate = new Date(date);
+        newDate.setHours(9, 0, 0);
+        setStartTime(newDate);
+      } else {
+        setStartTime(new Date());
+      }
+      setDuration(15);
+      setReason('');
     }
-  }, [booking, date]);
+  }, [booking, date, patients, bookingTypes]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -143,6 +168,7 @@ const Modal = ({ isOpen, onClose, diary, date, booking, onSubmit }) => {
       return;
     }
 
+    // Prepare the booking data
     const bookingData = {
       entity_uid: diary.entity_uid,
       diary_uid: diary.uid,
@@ -155,9 +181,15 @@ const Modal = ({ isOpen, onClose, diary, date, booking, onSubmit }) => {
       cancelled: false
     };
 
-    try {
-      let result;
+    // If we're editing, include the booking ID
+    if (booking) {
+      bookingData.uid = booking.uid;
+    }
 
+    try {
+      console.log(`${booking ? 'Updating' : 'Creating'} booking with data:`, bookingData);
+
+      let result;
       if (booking) {
         // Update existing booking
         result = await bookingService.updateBooking(booking.uid, bookingData);
@@ -167,13 +199,16 @@ const Modal = ({ isOpen, onClose, diary, date, booking, onSubmit }) => {
       }
 
       if (result.error) {
-        setError(`Failed to ${booking ? 'update' : 'create'} booking: ${result.error}`);
+        console.error(`Failed to ${booking ? 'update' : 'create'} booking:`, result.error);
+        setError(`Failed to ${booking ? 'update' : 'create'} booking: ${result.error.message || JSON.stringify(result.error)}`);
       } else {
+        console.log(`Booking ${booking ? 'updated' : 'created'} successfully:`, result);
         if (onSubmit) onSubmit();
         onClose();
       }
     } catch (err) {
-      setError(`Error ${booking ? 'updating' : 'creating'} booking: ${err.message}`);
+      console.error(`Error ${booking ? 'updating' : 'creating'} booking:`, err);
+      setError(`Error ${booking ? 'updating' : 'creating'} booking: ${err.message || 'Unknown error'}`);
     }
   };
 

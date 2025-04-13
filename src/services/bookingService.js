@@ -29,18 +29,29 @@ export const bookingService = {
   },
 
   updateBooking: (bookingUid, bookingData) => {
+    // Make sure to include only the allowed fields for updating
+    const updateData = {
+      uid: parseInt(bookingUid), // Ensure this is an integer
+      start_time: bookingData.start_time,
+      duration: parseInt(bookingData.duration),
+      patient_uid: parseInt(bookingData.patient_uid),
+      reason: bookingData.reason,
+      cancelled: bookingData.cancelled === true
+    };
+
+    console.log('Updating booking with data:', updateData);
+
     return apiCall(`/api/booking/${bookingUid}`, 'PUT', {
-      model: {
-        uid: bookingUid,
-        ...bookingData
-      }
+      model: updateData
     });
   },
 
   deleteBooking: (bookingUid) => {
+    console.log('Sending delete request for booking:', bookingUid);
+
     return apiCall(`/api/booking/${bookingUid}`, 'PUT', {
       model: {
-        uid: bookingUid,
+        uid: parseInt(bookingUid), // Ensure this is an integer
         cancelled: true
       }
     });
